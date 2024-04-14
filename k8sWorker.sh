@@ -1,5 +1,5 @@
 #!/bin/bash
-################# LFD459:1.25.1 s_02/k8sWorker.sh ################
+################# LFD459:1.29.1 s_02/k8sWorker.sh ################
 # The code herein is: Copyright the Linux Foundation, 2022
 #
 # This Copyright is retained for the purpose of protecting free
@@ -10,7 +10,7 @@
 #
 # This code is distributed under Version 2 of the GNU General Public
 # License, which you should have received with the source.
-#Version 1.26.1
+#Version 1.29.1
 #
 # This script is intended to be run on an Ubuntu 20.04,
 # 2cpu, 8G.
@@ -39,18 +39,19 @@ fi
 sudo touch /k8scp_run
 
 # Update the system
-sudo apt update ; sudo apt upgrade -y
+sudo apt-get update ; sudo apt-get upgrade -y
 
 # Install necessary software
-sudo apt install curl apt-transport-https vim git wget gnupg2 software-properties-common apt-transport-https ca-certificates -y
+sudo apt-get install curl apt-transport-https vim git wget gnupg2 software-properties-common apt-transport-https ca-certificates -y
 
 # Add repo for Kubernetes
-curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+sudo mkdir -m 755 /etc/apt/keyrings
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
 # Install the Kubernetes software, and lock the version
-sudo apt update
-sudo apt -y install kubelet=1.26.1-00 kubeadm=1.26.1-00 kubectl=1.26.1-00
+sudo apt-get update
+sudo apt-get -y install kubelet=1.29.1-1.1 kubeadm=1.29.1-1.1 kubectl=1.29.1-1.1
 sudo apt-mark hold kubelet kubeadm kubectl
 
 # Ensure Kubelet is running
@@ -84,8 +85,8 @@ sudo sysctl --system
 # Install the containerd software
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-sudo apt update
-sudo apt install containerd.io -y
+sudo apt-get update
+sudo apt-get install containerd.io -y
 
 # Configure containerd and restart
 sudo mkdir -p /etc/containerd
