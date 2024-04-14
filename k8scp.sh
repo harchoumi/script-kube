@@ -1,5 +1,5 @@
 #!/bin/bash
-################# LFD459:1.25.1 s_02/k8scp.sh ################
+################# LFD459:1.29.1 s_02/k8scp.sh ################
 # The code herein is: Copyright the Linux Foundation, 2022
 #
 # This Copyright is retained for the purpose of protecting free
@@ -10,7 +10,7 @@
 #
 # This code is distributed under Version 2 of the GNU General Public
 # License, which you should have received with the source.
-#Version 1.26.1
+#Version 1.29.1
 #
 # This script is intended to be run on an Ubuntu 20.04,
 # 2cpu, 8G.
@@ -38,18 +38,19 @@ fi
 sudo touch /k8scp_run
 
 # Update the system
-sudo apt update ; sudo apt upgrade -y
+sudo apt-get update ; sudo apt-get upgrade -y
 
 # Install necessary software
-sudo apt install curl apt-transport-https vim git wget gnupg2 software-properties-common apt-transport-https ca-certificates -y
+sudo apt-get install curl apt-transport-https vim git wget gnupg2 software-properties-common apt-transport-https ca-certificates -y
 
 # Add repo for Kubernetes
-curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+sudo mkdir -m 755 /etc/apt/keyrings
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
 # Install the Kubernetes software, and lock the version
-sudo apt update
-sudo apt -y install kubelet=1.26.1-00 kubeadm=1.26.1-00 kubectl=1.26.1-00
+sudo apt-get update
+sudo apt-get -y install kubelet=1.29.1-1.1 kubeadm=1.29.1-1.1 kubectl=1.29.1-1.1
 sudo apt-mark hold kubelet kubeadm kubectl
 
 # Ensure Kubelet is running
@@ -83,8 +84,8 @@ sudo sysctl --system
 # Install the containerd software
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-sudo apt update
-sudo apt install containerd.io -y
+sudo apt-get update
+sudo apt-get install containerd.io -y
 
 # Configure containerd and restart
 sudo mkdir -p /etc/containerd
@@ -110,22 +111,59 @@ runtime-endpoint=unix:///run/containerd/containerd.sock \
 --set image-endpoint=unix:///run/containerd/containerd.sock
 
 # Configure the cluster
-sudo kubeadm init --pod-network-cidr=192.168.0.0/16 | sudo tee /var/log/kubeinit.log
+sudo kubeadm init  | sudo tee /var/log/kubeinit.log
 
 # Configure the non-root user to use kubectl
 mkdir -p $HOME/.kube
 sudo cp -f /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-# Use Calico as the network plugin
-kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
+# Use Cilium as the network plugin
+# Install the CLI first
+export CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/master/stable.txt)
+export CLI_ARCH=amd64
+
+# Ensure correct architecture
+if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
+curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+
+# Make sure download worked
+sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
+
+# Move binary to correct location and remove tarball
+sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
+rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+
+# Now that binary is in place, install network plugin
+echo '********************************************************'
+echo '********************************************************'
+echo
+echo Installing Cilium, this may take a bit...
+echo
+echo '********************************************************'
+echo '********************************************************'
+echo
+
+cilium install
+
+echo
+sleep 3
+echo Cilium install finished. Continuing with script.
+echo
+
 
 # Add Helm to make our life easier
-wget https://get.helm.sh/helm-v3.9.0-linux-amd64.tar.gz
-tar -xf helm-v3.9.0-linux-amd64.tar.gz
+wget https://get.helm.sh/helm-v3.11.1-linux-amd64.tar.gz
+tar -xf helm-v3.11.1-linux-amd64.tar.gz
 sudo cp linux-amd64/helm /usr/local/bin/
 
-sleep 9 
+sleep 15
+
+sudo crictl config --set \
+runtime-endpoint=unix:///run/containerd/containerd.sock \
+--set image-endpoint=unix:///run/containerd/containerd.sock
+
+
 # Output the state of the cluster
 kubectl get node
 
