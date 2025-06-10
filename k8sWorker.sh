@@ -1,6 +1,6 @@
 #!/bin/bash
-################# LFD459:1.29.1 s_02/k8sWorker.sh ################
-# The code herein is: Copyright the Linux Foundation, 2022
+################# LFD459:1.33.1 s_02/k8sWorker.sh ################
+# The code herein is: Copyright The Linux Foundation, 2025
 #
 # This Copyright is retained for the purpose of protecting free
 # redistribution of source.
@@ -10,17 +10,6 @@
 #
 # This code is distributed under Version 2 of the GNU General Public
 # License, which you should have received with the source.
-#Version 1.29.1
-#
-# This script is intended to be run on an Ubuntu 20.04,
-# 2cpu, 8G.
-# By Tim Serewicz, 10/2022 GPL
-
-# Note there is a lot of software downloaded, which may require
-# some troubleshooting if any of the sites updates their code,
-# which should be expected
-
-
 # Check to see if the script has been run before. Exit out if so.
 FILE=/k8scp_run
 if [ -f "$FILE" ]; then
@@ -42,16 +31,16 @@ sudo touch /k8scp_run
 sudo apt-get update ; sudo apt-get upgrade -y
 
 # Install necessary software
-sudo apt-get install curl apt-transport-https vim git wget gnupg2 software-properties-common apt-transport-https ca-certificates -y
+sudo apt-get install curl apt-transport-https vim git wget gnupg2 software-properties-common apt-transport-https ca-certificates socat -y
 
 # Add repo for Kubernetes
 sudo mkdir -m 755 /etc/apt/keyrings
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
 # Install the Kubernetes software, and lock the version
 sudo apt-get update
-sudo apt-get -y install kubelet=1.29.1-1.1 kubeadm=1.29.1-1.1 kubectl=1.29.1-1.1
+sudo apt-get -y install kubelet=1.33.1-1.1 kubeadm=1.33.1-1.1 kubectl=1.33.1-1.1
 sudo apt-mark hold kubelet kubeadm kubectl
 
 # Ensure Kubelet is running
@@ -83,10 +72,16 @@ EOF
 sudo sysctl --system
 
 # Install the containerd software
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-sudo apt-get update
-sudo apt-get install containerd.io -y
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources:
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update && sudo apt-get install containerd.io -y
+
 
 # Configure containerd and restart
 sudo mkdir -p /etc/containerd
@@ -124,4 +119,3 @@ echo
 echo '***************************'
 echo
 echo
-
