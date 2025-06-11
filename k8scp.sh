@@ -117,7 +117,7 @@ runtime-endpoint=unix:///run/containerd/containerd.sock \
 
 # Configure the cluster
 # This assumes you are not using 10.0.0.0/8 for your host. If your node network is in the same range you will lose connectivity to otr nodes.
-sudo kubeadm init --kubernetes-version=1.33.1 --pod-network-cidr=10.0.0.0/8  | sudo tee /var/log/kubeinit.log
+sudo kubeadm init --config=kubeadm-config.yaml --upload-certs --node-name=cp | sudo tee /var/log/kubeinit.log
 
 # Configure the non-root user to use kubectl
 mkdir -p $HOME/.kube
@@ -150,7 +150,13 @@ echo '********************************************************'
 echo '********************************************************'
 echo
 
-cilium install --version 1.16.1
+# ON FAIT TOUT PETER
+sudo ip link delete cilium_host 2>/dev/null || true
+sudo ip link delete cilium_net 2>/dev/null || true
+sudo ip link delete cilium_vxlan 2>/dev/null || true
+
+# REPLACE MEEE 192.7.0.0/16 change the 7 with your number
+cilium install --version 1.16.1 --set ipam.mode=cluster-pool --set ipam.operator.clusterPoolIPv4PodCIDRList=192.7.0.0/16 --set ipam.operator.clusterPoolIPv4MaskSize=24
 
 echo
 sleep 3
