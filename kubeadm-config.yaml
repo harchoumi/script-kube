@@ -1,0 +1,6 @@
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+kubernetesVersion: 1.33.1
+controlPlaneEndpoint: "10.0.1.11:6443" #<-- Change here, add your lab000001 IP (ip address show)
+networking:
+  podSubnet: 192.7.0.0/16  #<-- Replace 7 by your Number
